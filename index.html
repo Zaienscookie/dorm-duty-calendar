@@ -2,6 +2,12 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
+<meta name="theme-color" content="#667eea">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="值日表">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/icon-192.png">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>宿舍值日表</title>
 <style>
@@ -115,6 +121,11 @@ for (let i = -3; i <= 14; i++) {
     <td>${dWho || '<span class="skip">—</span>'}</td>
     <td>${hol ? '<span class="tag holiday">节假日</span>' : (skip ? '<span class="tag">暂停</span>' : '')}</td>`;
   tbody.appendChild(tr);
+}
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));
 }
 </script>
 </body>
