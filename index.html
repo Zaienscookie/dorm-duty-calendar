@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>宿舍值日表</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+         background: linear-gradient(135deg,#667eea,#764ba2); min-height:100vh;
+         color:#333; padding:16px; }
+  .card { background:#fff; border-radius:20px; max-width:640px; margin:0 auto 16px;
+          padding:24px; box-shadow:0 8px 32px rgba(0,0,0,.18); }
+  h1 { font-size:22px; text-align:center; color:#4a4a4a; margin-bottom:4px; }
+  .sub { text-align:center; color:#999; font-size:13px; margin-bottom:16px; }
+  /* 今天 */
+  .today { text-align:center; padding:20px 0; background:linear-gradient(135deg,#f6d365,#fda085);
+           border-radius:16px; color:#fff; margin-bottom:16px; }
+  .today .date { font-size:14px; opacity:.9; }
+  .today .who { font-size:42px; font-weight:800; margin:6px 0; }
+  .today .hint { font-size:13px; opacity:.85; }
+  /* 排班表 */
+  table { width:100%; border-collapse:collapse; }
+  th { background:#f5f5f5; font-size:12px; color:#888; padding:8px 6px; }
+  td { text-align:center; padding:10px 4px; border-bottom:1px solid #f0f0f0; font-size:14px; }
+  .today-row { background:#fff8e1; font-weight:700; color:#e65100; }
+  .skip { color:#ccc; }
+  .weekend { color:#e57373; }
+  .tag { display:inline-block; font-size:11px; padding:2px 8px; border-radius:10px; background:#eee; }
+  .tag.holiday { background:#ffebee; color:#c62828; }
+  footer { text-align:center; color:rgba(255,255,255,.7); font-size:12px; margin-top:8px; }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <h1>🛏️ 宿舍值日表</h1>
+  <div class="sub">工作日轮流 · 周末/节假日暂停</div>
+
+  <div class="today" id="todayBox">
+    <div class="date" id="todayDate">--</div>
+    <div class="who" id="todayWho">--</div>
+    <div class="hint" id="todayHint">--</div>
+  </div>
+
+  <table>
+    <thead><tr><th>日期</th><th>星期</th><th>值日</th><th>备注</th></tr></thead>
+    <tbody id="dutyTable"></tbody>
+  </table>
+</div>
+
+<footer>📆 自动排班 · 每天更新 · 修改名单/节假日请在 config 中调整</footer>
+
+<script>
+// ============ 可配置 ============
+// 1. 室友名单（按顺序 1号~6号）
+const NAMES = ["1号", "2号", "3号", "4号", "5号", "6号"];
+
+// 2. 排班起点：2026-10-01 开始，当天 1号 值日
+const START_DATE = "2026-10-01";
+
+// 3. 法定节假日（暂停值日，可自行增删；默认空=只跳周末）
+//    例如：元旦 2026-01-01、春节 2026-02-17 ... 按 "YYYY-MM-DD" 格式添加
+const HOLIDAYS = [];
+// =================================
+
+const WEEK = ["日", "一", "二", "三", "四", "五", "六"];
+
+function fmt(d) { return d.toISOString().slice(0, 10); }
+function isHoliday(dateStr) { return HOLIDAYS.includes(dateStr); }
+function isWeekend(date) { return date.getDay() === 0 || date.getDay() === 6; }
+
+// 计算某天的值日人：从 START_DATE 起，工作日计数取模
+function dutyOf(date) {
+  const start = new Date(START_DATE + "T00:00:00");
+  const target = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  let count = 0;
+  const cur = new Date(start);
+  while (cur <= target) {
+    const s = fmt(cur);
+    if (!isWeekend(cur) && !isHoliday(s)) count++;
+    cur.setDate(cur.getDate() + 1);
+  }
+  if (count === 0) return null;
+  return NAMES[(count - 1) % NAMES.length];
+}
+
+// 渲染
+const now = new Date();
+const todayStr = fmt(now);
+const who = dutyOf(now);
+document.getElementById("todayDate").textContent =
+  `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日 · 周${WEEK[now.getDay()]}`;
+document.getElementById("todayWho").textContent = who || "休息日 🎉";
+document.getElementById("todayHint").textContent =
+  who ? "今天轮到 TA 值日，别忘了打扫哦～" :
+  (isHoliday(todayStr) ? "今天法定节假日，暂停值日" : "今天周末，暂停值日");
+
+const tbody = document.getElementById("dutyTable");
+// 过去3天 + 未来14天
+for (let i = -3; i <= 14; i++) {
+  const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i);
+  const ds = fmt(d);
+  const wd = d.getDay();
+  const dWho = dutyOf(d);
+  const isToday = i === 0;
+  const hol = isHoliday(ds);
+  const skip = isWeekend(d) || hol;
+
+  const tr = document.createElement("tr");
+  if (isToday) tr.className = "today-row";
+  tr.innerHTML = `
+    <td>${d.getMonth()+1}/${d.getDate()}${isToday ? " ←今天" : ""}</td>
+    <td class="${(wd===0||wd===6) ? "weekend" : ""}">周${WEEK[wd]}</td>
+    <td>${dWho || '<span class="skip">—</span>'}</td>
+    <td>${hol ? '<span class="tag holiday">节假日</span>' : (skip ? '<span class="tag">暂停</span>' : '')}</td>`;
+  tbody.appendChild(tr);
+}
+</script>
+</body>
+</html>
